@@ -1,3 +1,17 @@
+@font-face {
+  font-family: 'Noto Naskh Arabic';
+  src: url('fonts/NotoNaskhArabic-Regular.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Noto Naskh Arabic';
+  src: url('fonts/NotoNaskhArabic-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
 *,
 *::before,
 *::after {
@@ -30,7 +44,7 @@ html {
 }
 
 body {
-  font-family: "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
+  font-family: 'Noto Naskh Arabic', "Segoe UI", Tahoma, "Noto Sans Arabic", sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.7;
