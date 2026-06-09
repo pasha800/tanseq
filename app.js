@@ -644,7 +644,7 @@
 
     workers.forEach((w) => {
       msg += "کرێکار " + w.index + ":\n";
-      msg += "ناوی چوارانی: " + w.name + "\n";
+      msg += "ناوی چواری: " + w.name + "\n";
       msg += "نەتەوە: " + w.nationality + "\n";
       msg += "ئایا شۆفێرە؟ " + (w.isDriver === "yes" ? "بەڵێ" : "نەخێر") + "\n";
       if (w.isDriver === "yes") {
