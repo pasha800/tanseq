@@ -1759,6 +1759,8 @@
       progressText.textContent =
         "قۆناغ " + toKurdishDigits(displayStep) + " لە " + toKurdishDigits(4) + " — " + (STEP_LABELS[stepNum] || "");
       progressFill.style.width = displayStep / 4 * 100 + "%";
+      const pct = Math.round(displayStep / 4 * 100);
+      stepsNav.querySelector(".progress-bar").setAttribute("aria-valuenow", pct);
     } else {
       stepsNav.hidden = true;
     }
@@ -1855,7 +1857,9 @@
     }
     errorList.innerHTML = errors.map((e) => "<li>" + e + "</li>").join("");
     errorSummary.hidden = false;
-    errorSummary.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    requestAnimationFrame(() => {
+      errorSummary.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
   }
 
   function validateRequired(input, label) {
@@ -2880,7 +2884,7 @@
   loginForm.addEventListener("submit", (e) => {
     e.preventDefault();
     loginError.hidden = true;
-    if ($("#username").value.trim() === LOGIN_USER && $("#password").value === LOGIN_PASS) {
+    if ($("#username").value.trim().toLowerCase() === LOGIN_USER && $("#password").value === LOGIN_PASS) {
       setLoggedIn(true);
       restoreDraft();
       if (!localStorage.getItem(STORAGE_KEY)) showStep(2);
@@ -2961,7 +2965,8 @@
     try {
       await navigator.clipboard.writeText(text);
       copyToast.hidden = false;
-      setTimeout(() => { copyToast.hidden = true; }, 2500);
+      copyMessageBtn.textContent = "✓ کۆپی کرا";
+      setTimeout(() => { copyToast.hidden = true; copyMessageBtn.innerHTML = '<span aria-hidden="true">📋</span> کۆپی کردنی نامە'; }, 2500);
     } catch (_) {
       const ta = document.createElement("textarea");
       ta.value = text;
@@ -2970,7 +2975,8 @@
       document.execCommand("copy");
       document.body.removeChild(ta);
       copyToast.hidden = false;
-      setTimeout(() => { copyToast.hidden = true; }, 2500);
+      copyMessageBtn.textContent = "✓ کۆپی کرا";
+      setTimeout(() => { copyToast.hidden = true; copyMessageBtn.innerHTML = '<span aria-hidden="true">📋</span> کۆپی کردنی نامە'; }, 2500);
     }
   });
 
@@ -3019,7 +3025,9 @@
   }
 
   // --- Init ---
-  $("#coordinationDate").value = todayISO();
+  const coordDateEl = $("#coordinationDate");
+  coordDateEl.value = todayISO();
+  coordDateEl.min = todayISO();
   toggleCoalitionForceOther();
   companyBanner.hidden = true;
   editCompanyBtn.hidden = true;
