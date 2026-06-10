@@ -166,6 +166,12 @@
               <div class="form-group">
                 <label for="coordinationDate">ئەم هەماهەنگییە بۆ چ ڕۆژێکە؟ <span class="required" aria-hidden="true">*</span></label>
                 <input type="date" id="coordinationDate" required aria-required="true" aria-invalid="false">
+                <div class="quick-date-row" aria-label="هەڵبژاردنی خێرای ڕێکەوتی هەماهەنگی">
+                  <button type="button" class="quick-date-btn" data-target="coordinationDate" data-offset="0">ئەمڕۆ</button>
+                  <button type="button" class="quick-date-btn" data-target="coordinationDate" data-offset="1">سبەی</button>
+                  <button type="button" class="quick-date-btn" data-target="coordinationDate" data-offset="2">دوای سبەی</button>
+                </div>
+                <p class="date-warning" id="coordinationDateWarning" hidden role="status" aria-live="polite"></p>
                 <span class="field-error" data-for="coordinationDate" role="alert"></span>
               </div>
             </div>
@@ -239,6 +245,7 @@
       <!-- Live preview panel (steps 4+) -->
       <aside class="live-preview-panel" id="livePreviewPanel" hidden aria-label="پێشنمایشی نامە" aria-live="polite">
         <h3>نامەی ئامادە</h3>
+        <p class="preview-status status-warn" id="previewStatus" role="status" aria-live="polite">⚠ هێشتا زانیارییەکان تەواو نەکراون</p>
         <pre class="message-preview" id="messagePreview" dir="rtl" aria-label="متنی نامەکە"></pre>
         <div class="action-stack">
           <button type="button" class="btn btn-whatsapp btn-lg btn-block" id="sendWhatsAppBtn">
@@ -258,6 +265,7 @@
           <p class="copy-toast" id="copyToast" hidden role="status" aria-live="polite">
             ✓ نامەکە کۆپی کرا
           </p>
+          <p class="draft-status" id="draftStatus" hidden role="status" aria-live="polite"></p>
         </div>
       </aside>
     </div>
@@ -509,6 +517,12 @@
           <div class="form-group">
             <label>ڕۆژی هێنانەوەی ئۆتۆمبێل لە سێرفس <span class="required" aria-hidden="true">*</span></label>
             <input type="date" class="worker-service-return-date" required aria-required="true">
+            <div class="quick-date-row" aria-label="هەڵبژاردنی خێرای ڕۆژی هێنانەوە">
+              <button type="button" class="quick-date-btn" data-target="serviceReturnDate" data-offset="1">سبەی</button>
+              <button type="button" class="quick-date-btn" data-target="serviceReturnDate" data-offset="2">دوای ٢ ڕۆژ</button>
+              <button type="button" class="quick-date-btn" data-target="serviceReturnDate" data-offset="3">دوای ٣ ڕۆژ</button>
+              <button type="button" class="quick-date-btn" data-target="serviceReturnDate" data-offset="7">دوای ٧ ڕۆژ</button>
+            </div>
             <span class="field-error" data-field="serviceReturnDate" role="alert"></span>
           </div>
           <pre class="service-return-auto-summary" aria-live="polite"></pre>
