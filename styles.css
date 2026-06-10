@@ -1112,3 +1112,98 @@ textarea.invalid {
 .type-choice.selected .type-choice-icon svg {
   color: var(--gold);
 }
+
+/* ─── Smart helper UI: quick dates, preview status, draft status ─────── */
+.quick-date-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+}
+.quick-date-btn {
+  border: 1.5px solid rgba(19,35,63,0.18);
+  background: linear-gradient(180deg, #ffffff, #f4f7fb);
+  color: var(--navy);
+  border-radius: 999px;
+  padding: 0.38rem 0.72rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+}
+.quick-date-btn:hover,
+.quick-date-btn:focus-visible {
+  transform: translateY(-1px);
+  border-color: var(--gold);
+  background: linear-gradient(180deg, #fffdf8, var(--gold-soft));
+  box-shadow: var(--shadow-md);
+}
+.date-warning,
+.preview-status,
+.draft-status,
+.worker-smart-warnings {
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1.65;
+}
+.date-warning {
+  margin-top: 0.55rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--gold-soft);
+  border: 1px solid rgba(184,138,36,0.35);
+  border-right: 5px solid var(--gold);
+  color: #60460f;
+}
+.preview-status {
+  margin: 0 0 0.65rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+}
+.status-ok {
+  background: var(--success-light);
+  border-color: rgba(22,122,74,0.28);
+  color: var(--success);
+}
+.status-warn,
+.status-saving {
+  background: var(--gold-soft);
+  border-color: rgba(184,138,36,0.32);
+  color: #60460f;
+}
+.status-error {
+  background: var(--danger-light);
+  border-color: rgba(155,28,28,0.32);
+  color: var(--danger);
+}
+.draft-status {
+  padding: 0.5rem 0.7rem;
+  text-align: center;
+}
+.worker-smart-warnings {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 0 0.8rem;
+}
+.duplicate-warning {
+  display: block;
+  padding: 0.52rem 0.7rem;
+  background: var(--gold-soft);
+  border: 1px solid rgba(184,138,36,0.34);
+  border-right: 5px solid var(--gold);
+  border-radius: var(--radius-sm);
+  color: #60460f;
+}
+
+@media (max-width: 520px) {
+  .quick-date-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .quick-date-btn {
+    width: 100%;
+    padding-inline: 0.45rem;
+  }
+}
