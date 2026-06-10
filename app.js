@@ -10,6 +10,9 @@
   const COORDINATION_LABELS = {
     import_goods: "هەماهەنگی هێنانەژوورەوەی کەل و پەل",
     partner_workers: "هەماهەنگی کارکردنی کرێکاران لای هاوپەیمانان",
+    vehicle_entry: "هەماهەنگی هێنانەژوورەوەی ئۆتۆمبێل",
+    vehicle_service: "هەماهەنگی بردنی ئۆتۆمبێل بۆ سێرفس",
+    vehicle_contract_exit: "هەماهەنگی بردنەدەرەوەی ئۆتۆمبێل بەهۆی کۆتایی هاتنی گرێبەست",
   };
 
   const PLATE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -1452,12 +1455,29 @@
 
   const state = {
     coordinationType: "",
-    company: { name: "", contractNumber: "", contractDate: "", coordinationDate: "" },
+    company: { name: "", contractNumber: "", contractDate: "", coordinationDate: "", coalitionForce: "", coalitionForceOther: "" },
     notes: "",
   };
 
   const $ = (sel, ctx = document) => ctx.querySelector(sel);
   const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+
+  function currentCoordinationType() {
+    return coordinationTypeInput?.value || state.coordinationType || "";
+  }
+
+  function isVehicleEntryType() {
+    const type = currentCoordinationType();
+    return type === "vehicle_entry" || type === "vehicle_service" || type === "vehicle_contract_exit";
+  }
+
+  function isVehicleServiceType() {
+    return currentCoordinationType() === "vehicle_service";
+  }
+
+  function isVehicleContractExitType() {
+    return currentCoordinationType() === "vehicle_contract_exit";
+  }
 
   // --- Helpers ---
   function todayISO() {
@@ -1668,6 +1688,25 @@
     return errors;
   }
 
+
+  function getCoalitionForceDisplay() {
+    const sel = $("#coalitionForce");
+    const other = $("#coalitionForceOther");
+    if (!sel) return "";
+    if (sel.value === "هی تر") return other ? other.value.trim() : "";
+    return sel.value;
+  }
+
+  function toggleCoalitionForceOther() {
+    const sel = $("#coalitionForce");
+    const wrap = $("#coalitionForceOtherWrap");
+    const other = $("#coalitionForceOther");
+    if (!sel || !wrap) return;
+    const showOther = sel.value === "هی تر";
+    wrap.hidden = !showOther;
+    if (!showOther && other) other.value = "";
+  }
+
   // --- DOM refs ---
   const loginForm = $("#loginForm");
   const loginError = $("#loginError");
@@ -1724,13 +1763,19 @@
       stepsNav.hidden = true;
     }
 
-    companyBanner.hidden = stepNum < 4 || !state.company.name;
+    companyBanner.hidden = !isLoggedIn() || stepNum < 4 || !state.company.name;
     livePreviewPanel.hidden = stepNum < 4;
     if (stepNum >= 4) updatePreview();
+
+    const desktopLayout = document.querySelector(".desktop-layout");
+    if (desktopLayout) {
+      desktopLayout.classList.toggle("has-preview", stepNum >= 4);
+    }
 
     if (stepNum === 3 && !$("#coordinationDate").value) {
       $("#coordinationDate").value = todayISO();
     }
+    if (stepNum === 3) toggleCoalitionForceOther();
 
     if (!keepErrors) {
       hideErrorSummary();
@@ -1748,12 +1793,19 @@
     const c = state.company;
     if (!c.name) {
       companyBanner.hidden = true;
+      editCompanyBtn.hidden = true;
       return;
     }
     $("#bannerCompany").textContent = c.name;
     $("#bannerContract").textContent = c.contractNumber;
     $("#bannerDate").textContent = c.coordinationDate || c.contractDate || "—";
-    if (currentStep >= 4) companyBanner.hidden = false;
+    if (isLoggedIn() && currentStep >= 4) {
+      companyBanner.hidden = false;
+      editCompanyBtn.hidden = false;
+    } else {
+      companyBanner.hidden = true;
+      editCompanyBtn.hidden = true;
+    }
   }
 
   editCompanyBtn.addEventListener("click", () => showStep(3));
@@ -1826,10 +1878,27 @@
     return sel;
   }
 
+  function getServiceReturnNationality(card) {
+    const sel = card.querySelector(".worker-service-return-nationality")?.value || "";
+    if (sel === "هی تر") {
+      const other = card.querySelector(".worker-service-return-nationality-other")?.value.trim() || "";
+      return other ? "هی تر: " + other : "";
+    }
+    return sel;
+  }
+
+  function getServiceReturnWorkerName(w) {
+    return w.serviceCustomReturn ? (w.serviceReturnName || w.name) : w.name;
+  }
+
+  function getServiceReturnWorkerNationality(w) {
+    return w.serviceCustomReturn ? (w.serviceReturnNationality || w.nationality) : w.nationality;
+  }
+
   function collectWorkerFromCard(card, i) {
     const goodsChecked = getCheckedValues(card, ".worker-goods-cb");
-    const importChecked = getCheckedValues(card, ".worker-import-cb");
     const isDriver = getSelectedRadio(card, ".worker-is-driver");
+    const requiresVehicle = isDriver === "yes" || isVehicleEntryType();
     return {
       index: i + 1,
       name: card.querySelector(".worker-name").value.trim(),
@@ -1837,28 +1906,36 @@
       nationalityRaw: card.querySelector(".worker-nationality").value,
       nationalityOther: card.querySelector(".worker-nationality-other").value.trim(),
       isDriver,
-      plateType: isDriver === "yes" ? card.querySelector(".worker-plate-type").value : "",
+      requiresVehicle,
+      plateType: requiresVehicle ? card.querySelector(".worker-plate-type").value : "",
       plateCode: card.querySelector(".worker-plate-code").value,
       plateLetter: card.querySelector(".worker-plate-letter").value,
       plateNum: card.querySelector(".worker-plate-num").value.trim(),
       plate2Num: card.querySelector(".worker-plate2-num").value.trim(),
       plate2City: card.querySelector(".worker-plate2-city").value,
-      plateNumber: isDriver === "yes" ? formatPlateNumber(card) : "",
+      plateNumber: requiresVehicle ? formatPlateNumber(card) : "",
       carBrand: card.querySelector(".worker-car-brand").value,
       carBrandOther: card.querySelector(".worker-car-brand-other").value.trim(),
       carModel: card.querySelector(".worker-car-model").value,
       carModelOther: card.querySelector(".worker-car-model-other").value.trim(),
-      carType: isDriver === "yes" ? getCarTypeDisplay(card) : "",
+      carType: requiresVehicle ? getCarTypeDisplay(card) : "",
       carColorRaw: card.querySelector(".worker-car-color").value,
       carColorOther: card.querySelector(".worker-car-color-other").value.trim(),
-      carColor: isDriver === "yes" ? getCarColorDisplay(card) : "",
+      carColor: requiresVehicle ? getCarColorDisplay(card) : "",
+      vehicleDealType: getSelectedRadio(card, ".worker-vehicle-deal-type"),
+      skipWorkerInfo: !!card.querySelector(".worker-skip-person")?.checked,
       goodsItems: goodsChecked,
       goodsOther: card.querySelector(".worker-goods-other").value.trim(),
       goods: formatGoodsList(goodsChecked, card.querySelector(".worker-goods-other").value.trim()),
       mobileType: getSelectedRadio(card, ".worker-mobile-type"),
-      importItems: importChecked,
-      importOther: card.querySelector(".worker-import-other").value.trim(),
-      importGoods: formatGoodsList(importChecked, card.querySelector(".worker-import-other").value.trim()),
+      entryTax: getSelectedRadio(card, ".worker-entry-tax"),
+      entryTaxType: getSelectedRadio(card, ".worker-entry-tax-type"),
+      serviceReturnDate: card.querySelector(".worker-service-return-date")?.value || "",
+      serviceCustomReturn: !!card.querySelector(".worker-service-custom-return")?.checked,
+      serviceReturnName: card.querySelector(".worker-service-return-name")?.value.trim() || "",
+      serviceReturnNationalityRaw: card.querySelector(".worker-service-return-nationality")?.value || "",
+      serviceReturnNationalityOther: card.querySelector(".worker-service-return-nationality-other")?.value.trim() || "",
+      serviceReturnNationality: getServiceReturnNationality(card),
       card,
     };
   }
@@ -1870,6 +1947,10 @@
   function collectAllErrors() {
     const errors = [];
     const isImport = state.coordinationType === "import_goods";
+    const isVehicleEntry = state.coordinationType === "vehicle_entry";
+    const isVehicleService = state.coordinationType === "vehicle_service";
+    const isVehicleContractExit = state.coordinationType === "vehicle_contract_exit";
+    const needsVehicle = isVehicleEntry || isVehicleService || isVehicleContractExit;
 
     if (!state.coordinationType) errors.push("جۆری هەماهەنگی");
 
@@ -1877,20 +1958,29 @@
     if (!$("#contractNumber").value.trim()) errors.push("ژمارەی نووسراوی گرێبەست");
     if (!$("#contractDate").value) errors.push("ڕێکەوتی نووسراوی گرێبەست");
     if (!$("#coordinationDate").value) errors.push("ڕێکەوتی هەماهەنگی");
+    if (!$("#coalitionForce").value) errors.push("هێزی هاوپەیمانان");
+    if ($("#coalitionForce").value === "هی تر" && !$("#coalitionForceOther").value.trim()) errors.push("ناوی هێزی هاوپەیمانانی تر");
 
     collectWorkersFromDOM().forEach((w) => {
       const n = w.index;
-      if (!w.name) errors.push("ناوی چوارى کرێکار " + n);
-      if (!w.nationality) errors.push("نەتەوەی کرێکار " + n);
-      if (w.isDriver === "yes") {
+      if (!(isVehicleContractExit && w.skipWorkerInfo)) {
+        if (!w.name) errors.push("ناوی چوارى کرێکار " + n);
+        if (!w.nationality) errors.push("نەتەوەی کرێکار " + n);
+      }
+      if (w.isDriver === "yes" || needsVehicle) {
         getDriverFieldErrors(w, w.card).forEach((e) => errors.push(e.msg));
       }
-      if (!w.mobileType) errors.push("جۆری مۆبایلی کرێکار " + n);
+      if (isVehicleEntry && !w.vehicleDealType) errors.push("کرێ یان فرۆشتنی ئۆتۆمبێلی کرێکار " + n);
+      if (isVehicleService && !w.serviceReturnDate) errors.push("ڕۆژی هێنانەوەی ئۆتۆمبێل لە سێرفس بۆ کرێکار " + n);
+      if (isVehicleService && w.serviceCustomReturn && !w.serviceReturnName) errors.push("ناوی کرێکاری هێنانەوەی ئۆتۆمبێل لە سێرفس بۆ کرێکار " + n);
+      if (isVehicleService && w.serviceCustomReturn && !w.serviceReturnNationality) errors.push("نەتەوەی کرێکاری هێنانەوەی ئۆتۆمبێل لە سێرفس بۆ کرێکار " + n);
+      if (!(isVehicleContractExit && w.skipWorkerInfo)) {
+        if (!w.mobileType) errors.push("جۆری مۆبایلی کرێکار " + n);
+        if (w.entryTax === "yes" && !w.entryTaxType) errors.push("جۆری باجی هاتنەژوورەوەی کرێکار " + n);
+      }
       if (isImport) {
         if (!w.goodsItems.length) errors.push("کەل و پەلی کرێکار " + n);
-        if (!w.importItems.length) errors.push("جۆری کەل و پەل بۆ هێنانەژوورەوەی کرێکار " + n);
         if (w.goodsItems.includes("هی تر") && !w.goodsOther) errors.push("کەل و پەلی تر کرێکار " + n);
-        if (w.importItems.includes("هی تر") && !w.importOther) errors.push("جۆری تر بۆ هێنانەژوورەوەی کرێکار " + n);
       }
     });
 
@@ -1901,33 +1991,66 @@
     if (showSummary === undefined) showSummary = markFields;
     let valid = true;
     const isImport = state.coordinationType === "import_goods";
+    const isVehicleEntry = state.coordinationType === "vehicle_entry";
+    const isVehicleService = state.coordinationType === "vehicle_service";
+    const isVehicleContractExit = state.coordinationType === "vehicle_contract_exit";
+    const needsVehicle = isVehicleEntry || isVehicleService || isVehicleContractExit;
     const errors = [];
 
     collectWorkersFromDOM().forEach((w) => {
       const { card } = w;
       const n = w.index;
 
-      if (!w.name) {
-        if (markFields) setFieldError(card.querySelector(".worker-name"), "");
-        errors.push("ناوی چوارى کرێکار " + n);
-        valid = false;
+      if (!(isVehicleContractExit && w.skipWorkerInfo)) {
+        if (!w.name) {
+          if (markFields) setFieldError(card.querySelector(".worker-name"), "");
+          errors.push("ناوی چوارى کرێکار " + n);
+          valid = false;
+        }
+        if (!w.nationality) {
+          if (markFields) setFieldError(card.querySelector(".worker-nationality"), "");
+          errors.push("نەتەوەی کرێکار " + n);
+          valid = false;
+        }
       }
-      if (!w.nationality) {
-        if (markFields) setFieldError(card.querySelector(".worker-nationality"), "");
-        errors.push("نەتەوەی کرێکار " + n);
-        valid = false;
-      }
-      if (w.isDriver === "yes") {
+      if (w.isDriver === "yes" || needsVehicle) {
         getDriverFieldErrors(w, card).forEach((e) => {
           if (markFields && e.el) setFieldError(e.el, "");
           errors.push(e.msg);
           valid = false;
         });
       }
-      if (!w.mobileType) {
-        if (markFields) card.querySelector(".worker-mobile-group").classList.add("invalid");
-        errors.push("جۆری مۆبایلی کرێکار " + n);
+      if (isVehicleService && !w.serviceReturnDate) {
+        if (markFields) setFieldError(card.querySelector(".worker-service-return-date"), "");
+        errors.push("ڕۆژی هێنانەوەی ئۆتۆمبێل لە سێرفس بۆ کرێکار " + n);
         valid = false;
+      }
+      if (isVehicleService && w.serviceCustomReturn && !w.serviceReturnName) {
+        if (markFields) setFieldError(card.querySelector(".worker-service-return-name"), "");
+        errors.push("ناوی کرێکاری هێنانەوەی ئۆتۆمبێل لە سێرفس بۆ کرێکار " + n);
+        valid = false;
+      }
+      if (isVehicleService && w.serviceCustomReturn && !w.serviceReturnNationality) {
+        if (markFields) setFieldError(card.querySelector(".worker-service-return-nationality"), "");
+        errors.push("نەتەوەی کرێکاری هێنانەوەی ئۆتۆمبێل لە سێرفس بۆ کرێکار " + n);
+        valid = false;
+      }
+      if (isVehicleEntry && !w.vehicleDealType) {
+        if (markFields) card.querySelector(".worker-vehicle-deal-group").classList.add("invalid");
+        errors.push("کرێ یان فرۆشتنی ئۆتۆمبێلی کرێکار " + n);
+        valid = false;
+      }
+      if (!(isVehicleContractExit && w.skipWorkerInfo)) {
+        if (!w.mobileType) {
+          if (markFields) card.querySelector(".worker-mobile-group").classList.add("invalid");
+          errors.push("جۆری مۆبایلی کرێکار " + n);
+          valid = false;
+        }
+        if (w.entryTax === "yes" && !w.entryTaxType) {
+          if (markFields) card.querySelector(".worker-entry-tax-type-group").classList.add("invalid");
+          errors.push("جۆری باجی هاتنەژوورەوەی کرێکار " + n);
+          valid = false;
+        }
       }
       if (isImport) {
         const goodsGrid = card.querySelector(".worker-goods-checkboxes");
@@ -1939,17 +2062,6 @@
         if (w.goodsItems.includes("هی تر") && !w.goodsOther) {
           if (markFields) setFieldError(card.querySelector(".worker-goods-other"), "");
           errors.push("کەل و پەلی تر کرێکار " + n);
-          valid = false;
-        }
-        const importGrid = card.querySelector(".worker-import-checkboxes");
-        if (!w.importItems.length) {
-          if (markFields) importGrid.classList.add("invalid");
-          errors.push("جۆری کەل و پەل بۆ هێنانەژوورەوەی کرێکار " + n);
-          valid = false;
-        }
-        if (w.importItems.includes("هی تر") && !w.importOther) {
-          if (markFields) setFieldError(card.querySelector(".worker-import-other"), "");
-          errors.push("جۆری تر بۆ هێنانەژوورەوەی کرێکار " + n);
           valid = false;
         }
       }
@@ -1965,11 +2077,15 @@
     if (!$("#contractNumber").value.trim()) errors.push("ژمارەی نووسراوی گرێبەست");
     if (!$("#contractDate").value) errors.push("ڕێکەوتی نووسراوی گرێبەست");
     if (!$("#coordinationDate").value) errors.push("ڕێکەوتی هەماهەنگی");
+    if (!$("#coalitionForce").value) errors.push("هێزی هاوپەیمانان");
+    if ($("#coalitionForce").value === "هی تر" && !$("#coalitionForceOther").value.trim()) errors.push("ناوی هێزی هاوپەیمانانی تر");
     if (errors.length && markFields) {
       if (!$("#companyName").value.trim()) $("#companyName").classList.add("invalid");
       if (!$("#contractNumber").value.trim()) $("#contractNumber").classList.add("invalid");
       if (!$("#contractDate").value) $("#contractDate").classList.add("invalid");
       if (!$("#coordinationDate").value) $("#coordinationDate").classList.add("invalid");
+      if (!$("#coalitionForce").value) $("#coalitionForce").classList.add("invalid");
+      if ($("#coalitionForce").value === "هی تر" && !$("#coalitionForceOther").value.trim()) $("#coalitionForceOther").classList.add("invalid");
       showErrorSummary(errors);
       return false;
     }
@@ -1997,6 +2113,8 @@
         if (!$("#contractNumber").value.trim()) $("#contractNumber").classList.add("invalid");
         if (!$("#contractDate").value) $("#contractDate").classList.add("invalid");
         if (!$("#coordinationDate").value) $("#coordinationDate").classList.add("invalid");
+        if (!$("#coalitionForce").value) $("#coalitionForce").classList.add("invalid");
+        if ($("#coalitionForce").value === "هی تر" && !$("#coalitionForceOther").value.trim()) $("#coalitionForceOther").classList.add("invalid");
         validateWorkers(true, false);
         const hasCompanyErr = errors.some((e) => !e.includes("کرێکار"));
         const hasWorkerErr = errors.some((e) => e.includes("کرێکار"));
@@ -2016,6 +2134,8 @@
       contractNumber: $("#contractNumber").value.trim(),
       contractDate: $("#contractDate").value,
       coordinationDate: $("#coordinationDate").value,
+      coalitionForce: getCoalitionForceDisplay(),
+      coalitionForceOther: $("#coalitionForceOther") ? $("#coalitionForceOther").value.trim() : "",
     };
     state.notes = $("#notes").value.trim();
     updateCompanyBanner();
@@ -2029,6 +2149,10 @@
     const workers = collectWorkersFromDOM();
     const notes = state.notes;
     const isImport = state.coordinationType === "import_goods";
+    const isVehicleEntry = state.coordinationType === "vehicle_entry";
+    const isVehicleService = state.coordinationType === "vehicle_service";
+    const isVehicleContractExit = state.coordinationType === "vehicle_contract_exit";
+    const vehicleOnly = isVehicleEntry || isVehicleService || isVehicleContractExit;
 
     let msg = "";
     msg += "جۆری هەماهەنگی:\n" + type + "\n\n";
@@ -2036,24 +2160,78 @@
     msg += "زانیارییەکانی کۆمپانیا:\n";
     msg += "ناوی کۆمپانیا: " + c.name + "\n";
     msg += "ژمارەی نووسراوی گرێبەست: " + c.contractNumber + "\n";
-    msg += "ڕێکەوتی نووسراوی گرێبەست: " + c.contractDate + "\n\n";
+    msg += "ڕێکەوتی نووسراوی گرێبەست: " + c.contractDate + "\n";
+    msg += "هێزی هاوپەیمانان: " + (c.coalitionForce || "") + "\n\n";
     msg += "زانیارییەکانی کرێکاران:\n";
 
     workers.forEach((w) => {
-      msg += "کرێکار " + w.index + ":\n";
-      msg += "ناوی چوارى: " + w.name + "\n";
-      msg += "نەتەوە: " + w.nationality + "\n";
-      msg += "ئایا شۆفێرە؟ " + (w.isDriver === "yes" ? "بەڵێ" : "نەخێر") + "\n";
-      if (w.isDriver === "yes") {
+      msg += (isVehicleContractExit ? "ئۆتۆمبێل " : "کرێکار ") + w.index + ":\n";
+      if (isVehicleContractExit && w.skipWorkerInfo) {
+        msg += "زانیاری کرێکار: پێویست نییە - ئۆتۆمبێل لە دەرەوەی فرۆکەخانە وەرگیراوەتەوە\n";
+      } else {
+        msg += "ناوی چوارى: " + w.name + "\n";
+        msg += "نەتەوە: " + w.nationality + "\n";
+      }
+      if (!vehicleOnly) {
+        msg += "ئایا شۆفێرە؟ " + (w.isDriver === "yes" ? "بەڵێ" : "نەخێر") + "\n";
+      }
+      if (w.requiresVehicle) {
         msg += "ژمارەی ئۆتۆمبێل: " + ltrEmbed(w.plateNumber) + "\n";
         msg += "جۆری ئۆتۆمبێل: " + w.carType + "\n";
         msg += "ڕەنگی ئۆتۆمبێل: " + w.carColor + "\n";
       }
+      if (isVehicleEntry) {
+        msg += "ئەم ئۆتۆمبێلە بە کرێ یان بە فرۆشتن دەدرێت؟ " + (w.vehicleDealType === "rent" ? "کرێ" : w.vehicleDealType === "sale" ? "فرۆشتن" : "") + "\n";
+      }
+      if (isVehicleService) {
+        msg += "مەبەست: بردنی ئۆتۆمبێل بۆ سێرفس\n";
+        msg += "ڕۆژی هێنانەوەی ئۆتۆمبێل لە سێرفس: " + (w.serviceReturnDate || "") + "\n";
+      }
+      if (isVehicleContractExit) {
+        msg += "مەبەست: بردنەدەرەوەی ئۆتۆمبێل بەهۆی کۆتایی هاتنی گرێبەست\n";
+      }
       if (isImport && w.goods) msg += "کەل و پەل لە لایە: " + w.goods + "\n";
-      msg += "جۆری مۆبایل: " + w.mobileType + "\n";
-      if (isImport && w.importGoods) msg += "جۆری کەل و پەل بۆ هێنانەژوورەوە: " + w.importGoods + "\n";
+      if (!(isVehicleContractExit && w.skipWorkerInfo)) {
+        msg += "جۆری مۆبایل: " + w.mobileType + "\n";
+        msg += "باجی هاتنەژوورەوەی هەیە؟ " + (w.entryTax === "yes" ? "بەڵێ" : "نەخێر") + "\n";
+        if (w.entryTax === "yes") msg += "جۆری باج: " + w.entryTaxType + "\n";
+      }
       msg += "\n";
     });
+
+    if (isVehicleEntry) {
+      const vehicleStatements = workers
+        .filter((w) => w.vehicleDealType)
+        .map((w) => {
+          const prefix = workers.length > 1 ? "کرێکار " + w.index + ": " : "";
+          if (w.vehicleDealType === "rent") return prefix + "ئەم ئۆتۆمبێلە بەگرێبەستی کرێ دەدرێت بە هاوپەیمانان و ناگەڕێتەوە دەرەوە.";
+          if (w.vehicleDealType === "sale") return prefix + "ئەم ئۆتۆمبێلە فرۆشراوە بە هاوپەیمانان و ناگەڕێتەوە دەرەوە.";
+          return "";
+        })
+        .filter(Boolean);
+      if (vehicleStatements.length) msg += "تێبینیی کۆتایی:\n" + vehicleStatements.join("\n") + "\n\n";
+    }
+
+    if (isVehicleService) {
+      msg += "زانیاری هێنانەوە ژوورەوە لە سێرفس:\n";
+      workers.forEach((w) => {
+        msg += "کرێکار " + w.index + ":\n";
+        msg += "ڕۆژی هێنانەوە: " + (w.serviceReturnDate || "") + "\n";
+        msg += "ناوی چوارى: " + getServiceReturnWorkerName(w) + "\n";
+        msg += "نەتەوە: " + getServiceReturnWorkerNationality(w) + "\n";
+        msg += "ژمارەی ئۆتۆمبێل: " + ltrEmbed(w.plateNumber) + "\n";
+        msg += "جۆری ئۆتۆمبێل: " + w.carType + "\n";
+        msg += "ڕەنگی ئۆتۆمبێل: " + w.carColor + "\n\n";
+      });
+    }
+
+    if (isVehicleContractExit) {
+      const exitStatements = ["ئەم ئۆتۆمبێلە دەچێتە دەرەوە و ناگەڕێتەوە ناو فرۆکەخانە بەهۆی کۆتایی هاتنی گرێبەستەکەیان."];
+      if (workers.some((w) => w.skipWorkerInfo)) {
+        exitStatements.push("ئەم ئۆتۆمبێلە لە دەرەوەی فرۆکەخانە لە لایەن کۆمپانیاوە وەرگیراوەتەوە لە هێزی هاوپەیمانان.");
+      }
+      msg += "تێبینیی کۆتایی:\n" + exitStatements.join("\n") + "\n\n";
+    }
 
     if (notes) msg += "تێبینی:\n" + notes + "\n";
     return msg.trim();
@@ -2067,24 +2245,65 @@
   // --- Worker card ---
   function updateWorkerFieldRequirements() {
     const isImport = state.coordinationType === "import_goods";
+    const isVehicleEntry = state.coordinationType === "vehicle_entry";
+    const isVehicleService = state.coordinationType === "vehicle_service";
+    const isVehicleContractExit = state.coordinationType === "vehicle_contract_exit";
+    const needsVehicle = isVehicleEntry || isVehicleService || isVehicleContractExit;
     $$(".worker-card").forEach((card) => {
       const goodsGroup = card.querySelector(".worker-goods-group");
-      const importGroup = card.querySelector(".worker-import-group");
       const goodsMark = card.querySelector(".goods-required-mark");
+      const vehicleDealWrap = card.querySelector(".worker-vehicle-deal-wrap");
+      const serviceReturnWrap = card.querySelector(".worker-service-return-wrap");
+      const skipWorkerWrap = card.querySelector(".worker-skip-person-wrap");
 
       if (goodsGroup) goodsGroup.hidden = !isImport;
-      if (importGroup) importGroup.hidden = !isImport;
       if (goodsMark) goodsMark.hidden = !isImport;
 
       if (!isImport) {
         $$(".worker-goods-cb", card).forEach((cb) => (cb.checked = false));
-        $$(".worker-import-cb", card).forEach((cb) => (cb.checked = false));
         card.querySelector(".worker-goods-other").value = "";
-        card.querySelector(".worker-import-other").value = "";
         card.querySelector(".worker-goods-other-wrap").hidden = true;
-        card.querySelector(".worker-import-other-wrap").hidden = true;
       }
+
+      if (vehicleDealWrap) {
+        vehicleDealWrap.hidden = !isVehicleEntry;
+        if (!isVehicleEntry) {
+          card.querySelectorAll(".worker-vehicle-deal-type").forEach((r) => { r.checked = false; });
+          const dealGroup = card.querySelector(".worker-vehicle-deal-group");
+          if (dealGroup) dealGroup.classList.remove("invalid");
+        }
+      }
+
+      if (serviceReturnWrap) {
+        serviceReturnWrap.hidden = !isVehicleService;
+        if (isVehicleService) {
+          const returnDate = card.querySelector(".worker-service-return-date");
+          if (returnDate && !returnDate.value) returnDate.value = $("#coordinationDate")?.value || todayISO();
+          updateServiceReturnSummary(card);
+        } else {
+          card.querySelector(".worker-service-custom-return") && (card.querySelector(".worker-service-custom-return").checked = false);
+          const editWrap = card.querySelector(".worker-service-return-edit-wrap");
+          if (editWrap) editWrap.hidden = true;
+        }
+      }
+
+      if (skipWorkerWrap) {
+        skipWorkerWrap.hidden = !isVehicleContractExit;
+        if (!isVehicleContractExit) {
+          const skip = card.querySelector(".worker-skip-person");
+          if (skip) skip.checked = false;
+        }
+      }
+      toggleContractExitSkip(card);
+
+      const driverQuestionWrap = card.querySelector(".worker-is-driver-group")?.closest(".form-group");
+      if (driverQuestionWrap) {
+        driverQuestionWrap.hidden = needsVehicle;
+      }
+
+      toggleDriverFields(card);
     });
+    renumberWorkers();
   }
 
   function toggleOtherWrap(card, otherWrap, selector) {
@@ -2097,6 +2316,90 @@
     const isOther = card.querySelector(".worker-nationality").value === "هی تر";
     card.querySelector(".worker-nationality-other-wrap").hidden = !isOther;
     if (!isOther) card.querySelector(".worker-nationality-other").value = "";
+  }
+
+  function toggleContractExitSkip(card) {
+    const isContractExit = isVehicleContractExitType();
+    const skip = isContractExit && !!card.querySelector(".worker-skip-person")?.checked;
+    card.querySelectorAll(".worker-person-required").forEach((el) => {
+      el.hidden = skip;
+      if (skip) {
+        el.querySelectorAll("input, select, textarea").forEach((field) => {
+          if (field.type === "radio" || field.type === "checkbox") field.checked = false;
+          else field.value = "";
+          field.classList.remove("invalid");
+        });
+        el.querySelectorAll(".invalid").forEach((bad) => bad.classList.remove("invalid"));
+        el.querySelectorAll(".field-error").forEach((err) => { err.textContent = ""; });
+      }
+    });
+    if (skip) {
+      const taxNo = card.querySelector('.worker-entry-tax[value="no"]');
+      if (taxNo) taxNo.checked = true;
+      toggleEntryTaxType(card);
+    }
+  }
+
+  function toggleEntryTaxType(card) {
+    const hasTax = getSelectedRadio(card, ".worker-entry-tax") === "yes";
+    const wrap = card.querySelector(".worker-entry-tax-type-wrap");
+    const typeGroup = card.querySelector(".worker-entry-tax-type-group");
+    wrap.hidden = !hasTax;
+    if (!hasTax) {
+      card.querySelectorAll(".worker-entry-tax-type").forEach((r) => { r.checked = false; });
+      if (typeGroup) typeGroup.classList.remove("invalid");
+      const err = wrap.querySelector(".field-error");
+      if (err) err.textContent = "";
+    }
+  }
+
+  function toggleServiceReturnNationalityOther(card) {
+    const sel = card.querySelector(".worker-service-return-nationality")?.value || "";
+    const wrap = card.querySelector(".worker-service-return-nationality-other-wrap");
+    if (!wrap) return;
+    wrap.hidden = sel !== "هی تر";
+    if (sel !== "هی تر") {
+      const input = card.querySelector(".worker-service-return-nationality-other");
+      if (input) input.value = "";
+    }
+  }
+
+  function toggleServiceCustomReturn(card) {
+    const custom = !!card.querySelector(".worker-service-custom-return")?.checked;
+    const wrap = card.querySelector(".worker-service-return-edit-wrap");
+    if (!wrap) return;
+    wrap.hidden = !custom;
+    if (custom) {
+      const name = card.querySelector(".worker-service-return-name");
+      const nat = card.querySelector(".worker-service-return-nationality");
+      if (name && !name.value) name.value = card.querySelector(".worker-name")?.value.trim() || "";
+      if (nat && !nat.value) nat.value = card.querySelector(".worker-nationality")?.value || "";
+      const other = card.querySelector(".worker-service-return-nationality-other");
+      if (other && !other.value) other.value = card.querySelector(".worker-nationality-other")?.value.trim() || "";
+      toggleServiceReturnNationalityOther(card);
+    }
+    updateServiceReturnSummary(card);
+  }
+
+  function updateServiceReturnSummary(card) {
+    const box = card.querySelector(".service-return-auto-summary");
+    if (!box) return;
+    const w = collectWorkerFromCard(card, $$(".worker-card").indexOf(card));
+    const returnName = getServiceReturnWorkerName(w) || "—";
+    const returnNationality = getServiceReturnWorkerNationality(w) || "—";
+    const plate = w.plateNumber || "—";
+    const car = w.carType || "—";
+    const color = w.carColor || "—";
+    box.textContent =
+      "ناو: " + returnName + "\n" +
+      "نەتەوە: " + returnNationality + "\n" +
+      "ژمارەی ئۆتۆمبێل: " + plate + "\n" +
+      "جۆری ئۆتۆمبێل: " + car + "\n" +
+      "ڕەنگ: " + color;
+  }
+
+  function updateAllServiceReturnSummaries() {
+    $$(".worker-card").forEach(updateServiceReturnSummary);
   }
 
   function clearDriverFields(card) {
@@ -2178,8 +2481,9 @@
 
   function toggleDriverFields(card) {
     const isDriver = getSelectedRadio(card, ".worker-is-driver") === "yes";
-    card.querySelector(".driver-fields").hidden = !isDriver;
-    if (!isDriver) clearDriverFields(card);
+    const showVehicleFields = isDriver || isVehicleEntryType();
+    card.querySelector(".driver-fields").hidden = !showVehicleFields;
+    if (!showVehicleFields) clearDriverFields(card);
   }
 
   function applyDriverDataToCard(card, w) {
@@ -2212,7 +2516,7 @@
       r.checked = r.value === prev.isDriver;
     });
     toggleDriverFields(card);
-    if (prev.isDriver === "yes") applyDriverDataToCard(card, prev);
+    if (prev.isDriver === "yes" || prev.requiresVehicle) applyDriverDataToCard(card, prev);
 
     card.querySelectorAll(".worker-goods-cb").forEach((cb) => {
       cb.checked = prev.goodsItems.includes(cb.value);
@@ -2224,11 +2528,35 @@
       r.checked = r.value === prev.mobileType;
     });
 
-    card.querySelectorAll(".worker-import-cb").forEach((cb) => {
-      cb.checked = prev.importItems.includes(cb.value);
+    card.querySelectorAll(".worker-entry-tax").forEach((r) => {
+      r.checked = r.value === (prev.entryTax || "no");
     });
-    card.querySelector(".worker-import-other").value = prev.importOther;
-    toggleOtherWrap(card, card.querySelector(".worker-import-other-wrap"), ".worker-import-cb");
+    toggleEntryTaxType(card);
+    card.querySelectorAll(".worker-entry-tax-type").forEach((r) => {
+      r.checked = r.value === prev.entryTaxType;
+    });
+
+    card.querySelectorAll(".worker-vehicle-deal-type").forEach((r) => {
+      r.checked = r.value === prev.vehicleDealType;
+    });
+    const skipPerson = card.querySelector(".worker-skip-person");
+    if (skipPerson) skipPerson.checked = !!prev.skipWorkerInfo;
+    toggleContractExitSkip(card);
+    const dealGroup = card.querySelector(".worker-vehicle-deal-group");
+    if (dealGroup) dealGroup.classList.remove("invalid");
+
+    const returnDate = card.querySelector(".worker-service-return-date");
+    if (returnDate) returnDate.value = prev.serviceReturnDate || $("#coordinationDate")?.value || todayISO();
+    const serviceCustom = card.querySelector(".worker-service-custom-return");
+    if (serviceCustom) serviceCustom.checked = !!prev.serviceCustomReturn;
+    const serviceName = card.querySelector(".worker-service-return-name");
+    if (serviceName) serviceName.value = prev.serviceReturnName || "";
+    const serviceNat = card.querySelector(".worker-service-return-nationality");
+    if (serviceNat) serviceNat.value = prev.serviceReturnNationalityRaw || "";
+    const serviceNatOther = card.querySelector(".worker-service-return-nationality-other");
+    if (serviceNatOther) serviceNatOther.value = prev.serviceReturnNationalityOther || "";
+    toggleServiceCustomReturn(card);
+    toggleServiceReturnNationalityOther(card);
 
     card.querySelector(".worker-name").focus();
     scheduleSave();
@@ -2239,9 +2567,11 @@
     const uid = Date.now() + "-" + Math.random().toString(36).slice(2, 8);
     const driverName = "driver-" + uid;
     const mobileName = "mobile-" + uid;
+    const entryTaxName = "entry-tax-" + uid;
+    const entryTaxTypeName = "entry-tax-type-" + uid;
+    const vehicleDealName = "vehicle-deal-" + uid;
 
     buildCheckboxGrid(card.querySelector(".worker-goods-checkboxes"), "worker-goods-cb", "goods");
-    buildCheckboxGrid(card.querySelector(".worker-import-checkboxes"), "worker-import-cb", "import");
     populatePlateLetters(card.querySelector(".worker-plate-letter"));
     populateCarBrandSelect(card.querySelector(".worker-car-brand"));
 
@@ -2281,6 +2611,34 @@
       r.addEventListener("change", () => { clearFieldError(card.querySelector(".worker-mobile-group")); onFormChange(); });
     });
 
+    card.querySelectorAll(".worker-entry-tax").forEach((r) => {
+      r.name = entryTaxName;
+      r.addEventListener("change", () => { toggleEntryTaxType(card); onFormChange(); });
+    });
+    card.querySelectorAll(".worker-entry-tax-type").forEach((r) => {
+      r.name = entryTaxTypeName;
+      r.addEventListener("change", () => { card.querySelector(".worker-entry-tax-type-group").classList.remove("invalid"); onFormChange(); });
+    });
+
+    card.querySelectorAll(".worker-vehicle-deal-type").forEach((r) => {
+      r.name = vehicleDealName;
+      r.addEventListener("change", () => { card.querySelector(".worker-vehicle-deal-group").classList.remove("invalid"); onFormChange(); });
+    });
+
+    const skipPerson = card.querySelector(".worker-skip-person");
+    if (skipPerson) skipPerson.addEventListener("change", () => { toggleContractExitSkip(card); onFormChange(); });
+
+    const serviceCustom = card.querySelector(".worker-service-custom-return");
+    if (serviceCustom) serviceCustom.addEventListener("change", () => { toggleServiceCustomReturn(card); onFormChange(); });
+    const serviceReturnDate = card.querySelector(".worker-service-return-date");
+    if (serviceReturnDate) serviceReturnDate.addEventListener("change", onFormChange);
+    const serviceReturnNationality = card.querySelector(".worker-service-return-nationality");
+    if (serviceReturnNationality) serviceReturnNationality.addEventListener("change", () => { toggleServiceReturnNationalityOther(card); onFormChange(); });
+    ["worker-service-return-name", "worker-service-return-nationality-other"].forEach((cls) => {
+      const el = card.querySelector("." + cls);
+      if (el) el.addEventListener("input", onFormChange);
+    });
+
     card.querySelector(".worker-nationality").addEventListener("change", () => {
       toggleNationalityOther(card);
       onFormChange();
@@ -2295,17 +2653,10 @@
       });
     });
 
-    const importOtherWrap = card.querySelector(".worker-import-other-wrap");
-    $$(".worker-import-cb", card).forEach((cb) => {
-      cb.addEventListener("change", () => {
-        toggleOtherWrap(card, importOtherWrap, ".worker-import-cb");
-        card.querySelector(".worker-import-checkboxes").classList.remove("invalid");
-        onFormChange();
-      });
-    });
 
     toggleDriverFields(card);
     toggleNationalityOther(card);
+    toggleEntryTaxType(card);
     updateWorkerFieldRequirements();
 
     card.querySelector(".btn-remove-worker").addEventListener("click", () => {
@@ -2330,6 +2681,8 @@
   function renumberWorkers() {
     const cards = $$(".worker-card");
     cards.forEach((card, i) => {
+      const title = card.querySelector(".worker-title");
+      if (title && title.firstChild) title.firstChild.nodeValue = isVehicleContractExitType() ? "ئۆتۆمبێل " : "کرێکار ";
       card.querySelector(".worker-num").textContent = i + 1;
       card.querySelector(".btn-remove-worker").hidden = cards.length <= 1;
       card.querySelector(".btn-copy-prev").hidden = i === 0;
@@ -2366,11 +2719,18 @@
       carModelOther: w.carModelOther,
       carColorRaw: w.carColorRaw,
       carColorOther: w.carColorOther,
+      vehicleDealType: w.vehicleDealType,
+      skipWorkerInfo: w.skipWorkerInfo,
       goodsItems: w.goodsItems,
       goodsOther: w.goodsOther,
       mobileType: w.mobileType,
-      importItems: w.importItems,
-      importOther: w.importOther,
+      entryTax: w.entryTax,
+      entryTaxType: w.entryTaxType,
+      serviceReturnDate: w.serviceReturnDate,
+      serviceCustomReturn: w.serviceCustomReturn,
+      serviceReturnName: w.serviceReturnName,
+      serviceReturnNationalityRaw: w.serviceReturnNationalityRaw,
+      serviceReturnNationalityOther: w.serviceReturnNationalityOther,
     }));
     return {
       coordinationType: state.coordinationType,
@@ -2393,6 +2753,7 @@
 
   function onFormChange() {
     hideErrorSummary();
+    updateAllServiceReturnSummaries();
     updatePreview();
     scheduleSave();
   }
@@ -2411,7 +2772,7 @@
     if (data.coordinationType) {
       coordinationTypeInput.value = data.coordinationType;
       state.coordinationType = data.coordinationType;
-      $$(".type-choice").forEach((c) => c.classList.toggle("selected", c.dataset.value === data.coordinationType));
+      syncTypeChoiceUI(data.coordinationType);
     }
 
     if (data.company) {
@@ -2419,6 +2780,14 @@
       $("#contractNumber").value = data.company.contractNumber || "";
       $("#contractDate").value = data.company.contractDate || "";
       $("#coordinationDate").value = data.company.coordinationDate || todayISO();
+      $("#coalitionForce").value = data.company.coalitionForceRaw || data.company.coalitionForce || "";
+      if (data.company.coalitionForce && !Array.from($("#coalitionForce").options).some((opt) => opt.value === data.company.coalitionForce)) {
+        $("#coalitionForce").value = "هی تر";
+        $("#coalitionForceOther").value = data.company.coalitionForce;
+      } else {
+        $("#coalitionForceOther").value = data.company.coalitionForceOther || "";
+      }
+      toggleCoalitionForceOther();
       state.company = { ...data.company };
     }
 
@@ -2436,7 +2805,7 @@
       toggleNationalityOther(card);
       card.querySelectorAll(".worker-is-driver").forEach((r) => { r.checked = r.value === (w.isDriver || "no"); });
       toggleDriverFields(card);
-      if ((w.isDriver || "no") === "yes") {
+      if ((w.isDriver || "no") === "yes" || isVehicleEntryType()) {
         applyDriverDataToCard(card, {
           plateType: w.plateType || "",
           plateCode: w.plateCode || "",
@@ -2465,11 +2834,25 @@
       card.querySelector(".worker-goods-other").value = w.goodsOther || "";
       toggleOtherWrap(card, card.querySelector(".worker-goods-other-wrap"), ".worker-goods-cb");
       card.querySelectorAll(".worker-mobile-type").forEach((r) => { r.checked = r.value === w.mobileType; });
-      $$(".worker-import-cb", card).forEach((cb) => {
-        cb.checked = (w.importItems || []).includes(cb.value);
-      });
-      card.querySelector(".worker-import-other").value = w.importOther || "";
-      toggleOtherWrap(card, card.querySelector(".worker-import-other-wrap"), ".worker-import-cb");
+      card.querySelectorAll(".worker-entry-tax").forEach((r) => { r.checked = r.value === (w.entryTax || "no"); });
+      toggleEntryTaxType(card);
+      card.querySelectorAll(".worker-entry-tax-type").forEach((r) => { r.checked = r.value === w.entryTaxType; });
+      card.querySelectorAll(".worker-vehicle-deal-type").forEach((r) => { r.checked = r.value === w.vehicleDealType; });
+      const skipPerson = card.querySelector(".worker-skip-person");
+      if (skipPerson) skipPerson.checked = !!w.skipWorkerInfo;
+      toggleContractExitSkip(card);
+      const returnDate = card.querySelector(".worker-service-return-date");
+      if (returnDate) returnDate.value = w.serviceReturnDate || data.company?.coordinationDate || todayISO();
+      const serviceCustom = card.querySelector(".worker-service-custom-return");
+      if (serviceCustom) serviceCustom.checked = !!w.serviceCustomReturn;
+      const serviceName = card.querySelector(".worker-service-return-name");
+      if (serviceName) serviceName.value = w.serviceReturnName || "";
+      const serviceNat = card.querySelector(".worker-service-return-nationality");
+      if (serviceNat) serviceNat.value = w.serviceReturnNationalityRaw || "";
+      const serviceNatOther = card.querySelector(".worker-service-return-nationality-other");
+      if (serviceNatOther) serviceNatOther.value = w.serviceReturnNationalityOther || "";
+      toggleServiceCustomReturn(card);
+      toggleServiceReturnNationalityOther(card);
     });
 
     updateWorkerFieldRequirements();
@@ -2483,6 +2866,14 @@
 
   function clearSavedData() {
     localStorage.removeItem(STORAGE_KEY);
+  }
+
+  function syncTypeChoiceUI(value) {
+    $$(".type-choice").forEach((c) => {
+      const selected = c.dataset.value === value;
+      c.classList.toggle("selected", selected);
+      c.setAttribute("aria-checked", selected ? "true" : "false");
+    });
   }
 
   // --- Events ---
@@ -2518,7 +2909,7 @@
     coordinationTypeInput.value = btn.dataset.value;
     state.coordinationType = btn.dataset.value;
     typeError.hidden = true;
-    $$(".type-choice").forEach((c) => c.classList.toggle("selected", c === btn));
+    syncTypeChoiceUI(btn.dataset.value);
     updateWorkerFieldRequirements();
     onFormChange();
   });
@@ -2600,21 +2991,22 @@
 
   $("#notes").addEventListener("input", onFormChange);
 
-  ["companyName", "contractNumber", "contractDate", "coordinationDate"].forEach((id) => {
+  ["companyName", "contractNumber", "contractDate", "coordinationDate", "coalitionForce", "coalitionForceOther"].forEach((id) => {
     const el = $("#" + id);
-    el.addEventListener("input", onFormChange);
-    el.addEventListener("change", onFormChange);
+    el.addEventListener("input", () => { toggleCoalitionForceOther(); onFormChange(); });
+    el.addEventListener("change", () => { toggleCoalitionForceOther(); onFormChange(); });
   });
 
   function resetAll(clearStorage) {
     state.coordinationType = "";
-    state.company = { name: "", contractNumber: "", contractDate: "", coordinationDate: "" };
+    state.company = { name: "", contractNumber: "", contractDate: "", coordinationDate: "", coalitionForce: "", coalitionForceOther: "" };
     state.notes = "";
     coordinationTypeInput.value = "";
-    $$(".type-choice").forEach((c) => c.classList.remove("selected"));
+    syncTypeChoiceUI("");
     typeError.hidden = true;
     companyForm.reset();
     $("#coordinationDate").value = todayISO();
+    toggleCoalitionForceOther();
     $("#notes").value = "";
     messagePreview.textContent = "";
     workersContainer.innerHTML = "";
@@ -2628,6 +3020,9 @@
 
   // --- Init ---
   $("#coordinationDate").value = todayISO();
+  toggleCoalitionForceOther();
+  companyBanner.hidden = true;
+  editCompanyBtn.hidden = true;
 
   if (isLoggedIn()) {
     const hadDraft = !!localStorage.getItem(STORAGE_KEY);

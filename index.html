@@ -7,7 +7,8 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app">
+  <a href="#main-content" class="skip-link">بەستەوە بۆ ناوەڕۆکی سەرەکی</a>
+  <div class="app" id="main-content">
     <header class="gov-header">
       <div class="gov-header-inner">
         <div class="gov-seal" aria-hidden="true"></div>
@@ -18,7 +19,7 @@
       </div>
     </header>
 
-    <div class="progress-bar-wrap" id="stepsNav" hidden>
+    <div class="progress-bar-wrap" id="stepsNav" hidden aria-live="polite">
       <p class="progress-text" id="progressText">قۆناغ ١ لە ٤</p>
       <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
     </div>
@@ -39,20 +40,21 @@
       <ul id="errorList"></ul>
     </div>
 
-    <main class="main">
+    <div class="desktop-layout">
+      <main class="main" role="main">
       <!-- Step 1: Login -->
       <section class="card step-panel" id="step1" data-step="1">
         <h2>چوونەژوورەوە</h2>
         <form id="loginForm" novalidate>
           <div class="form-group">
             <label for="username">ناوی بەکارهێنەر</label>
-            <input type="text" id="username" autocomplete="username" required>
+            <input type="text" id="username" autocomplete="username" required aria-required="true" aria-describedby="loginError">
           </div>
           <div class="form-group">
             <label for="password">وشەی نهێنی</label>
-            <input type="password" id="password" autocomplete="current-password" required>
+            <input type="password" id="password" autocomplete="current-password" required aria-required="true" aria-describedby="loginError">
           </div>
-          <p class="error-msg" id="loginError" hidden>ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە</p>
+          <p class="error-msg" id="loginError" hidden role="alert">ناوی بەکارهێنەر یان وشەی نهێنی هەڵەیە</p>
           <button type="submit" class="btn btn-primary btn-block">چوونەژوورەوە</button>
         </form>
       </section>
@@ -63,17 +65,29 @@
         <p class="hint">تەنیا یەکێک لەمانە هەڵبژێرە</p>
         <form id="typeForm" novalidate>
           <input type="hidden" id="coordinationType" value="">
-          <div class="type-choices" id="typeChoices">
-            <button type="button" class="type-choice" data-value="import_goods">
+          <div class="type-choices" id="typeChoices" role="radiogroup" aria-required="true" aria-describedby="typeError">
+            <button type="button" class="type-choice" data-value="import_goods" role="radio" aria-checked="false">
               <span class="type-choice-title">هەماهەنگی هێنانەژوورەوەی کەل و پەل</span>
               <span class="type-choice-desc">هەماهەنگی بۆ گەیاندنی کەل و پەل</span>
             </button>
-            <button type="button" class="type-choice" data-value="partner_workers">
+            <button type="button" class="type-choice" data-value="partner_workers" role="radio" aria-checked="false">
               <span class="type-choice-title">هەماهەنگی کارکردنی کرێکاران لای هاوپەیمانان</span>
               <span class="type-choice-desc">هەماهەنگی بۆ کارکردنی تیم</span>
             </button>
+            <button type="button" class="type-choice" data-value="vehicle_entry" role="radio" aria-checked="false">
+              <span class="type-choice-title">هەماهەنگی هێنانەژوورەوەی ئۆتۆمبێل</span>
+              <span class="type-choice-desc">هەمان زانیاری کرێکاران، بەڵام زانیاری ئۆتۆمبێل پێویستە</span>
+            </button>
+            <button type="button" class="type-choice" data-value="vehicle_service" role="radio" aria-checked="false">
+              <span class="type-choice-title">هەماهەنگی بردنی ئۆتۆمبێل بۆ سێرفس</span>
+              <span class="type-choice-desc">بردنە دەرەوە و هێنانەوە ژوورەوەی هەمان ئۆتۆمبێل لە ڕۆژێکی دیاریکراو</span>
+            </button>
+            <button type="button" class="type-choice" data-value="vehicle_contract_exit" role="radio" aria-checked="false">
+              <span class="type-choice-title">هەماهەنگی بردنەدەرەوەی ئۆتۆمبێل بەهۆی کۆتایی هاتنی گرێبەست</span>
+              <span class="type-choice-desc">تایبەت بە ئۆتۆمبێلی کۆتایی گرێبەست؛ زانیاری ئۆتۆمبێل پێویستە و دەتوانرێت زانیاری کرێکار نەنووسرێت</span>
+            </button>
           </div>
-          <span class="field-error" id="typeError" hidden>تکایە جۆری هەماهەنگی هەڵبژێرە</span>
+          <span class="field-error" id="typeError" hidden role="alert">تکایە جۆری هەماهەنگی هەڵبژێرە</span>
           <div class="btn-row">
             <button type="button" class="btn btn-secondary" id="logoutBtn1">دەرچوون</button>
             <button type="submit" class="btn btn-primary btn-lg">بەردەوامبوون</button>
@@ -88,23 +102,44 @@
         <form id="companyForm" novalidate>
           <div class="form-group">
             <label for="companyName">ناوی کۆمپانیا <span class="required">*</span></label>
-            <input type="text" id="companyName" required>
-            <span class="field-error" data-for="companyName"></span>
+            <input type="text" id="companyName" required aria-required="true" aria-invalid="false">
+            <span class="field-error" data-for="companyName" role="alert"></span>
           </div>
           <div class="form-group">
             <label for="contractNumber">ژمارەی نووسراوی گرێبەست <span class="required">*</span></label>
-            <input type="text" id="contractNumber" required>
-            <span class="field-error" data-for="contractNumber"></span>
+            <input type="text" id="contractNumber" required aria-required="true" aria-invalid="false">
+            <span class="field-error" data-for="contractNumber" role="alert"></span>
           </div>
           <div class="form-group">
             <label for="contractDate">ڕێکەوتی نووسراوی گرێبەست <span class="required">*</span></label>
-            <input type="date" id="contractDate" required>
-            <span class="field-error" data-for="contractDate"></span>
+            <input type="date" id="contractDate" required aria-required="true" aria-invalid="false">
+            <span class="field-error" data-for="contractDate" role="alert"></span>
           </div>
           <div class="form-group">
             <label for="coordinationDate">ئەم هەماهەنگییە بۆ چ ڕۆژێکە؟ <span class="required">*</span></label>
-            <input type="date" id="coordinationDate" required>
-            <span class="field-error" data-for="coordinationDate"></span>
+            <input type="date" id="coordinationDate" required aria-required="true" aria-invalid="false">
+            <span class="field-error" data-for="coordinationDate" role="alert"></span>
+          </div>
+          <div class="form-group">
+            <label for="coalitionForce">کار بۆ چ هێزێکی هاوپەیمانان دەکرێت؟ <span class="required">*</span></label>
+            <select id="coalitionForce" required aria-required="true" aria-invalid="false">
+              <option value="">— هەڵبژێرە —</option>
+              <option value="هێزی ئەمریکی">هێزی ئەمریکی</option>
+              <option value="هێزی ئیتالی">هێزی ئیتالی</option>
+              <option value="هێزی فەرەنسی">هێزی فەرەنسی</option>
+              <option value="هێزی بەریتانی">هێزی بەریتانی</option>
+              <option value="هێزی ئەڵمانی">هێزی ئەڵمانی</option>
+              <option value="هێزی هۆڵەندی">هێزی هۆڵەندی</option>
+              <option value="هێزی ناتۆ">هێزی ناتۆ</option>
+              <option value="هێزی هاوپەیمانان / گشتی">هێزی هاوپەیمانان / گشتی</option>
+              <option value="هی تر">هی تر</option>
+            </select>
+            <span class="field-error" data-for="coalitionForce" role="alert"></span>
+          </div>
+          <div class="form-group" id="coalitionForceOtherWrap" hidden>
+            <label for="coalitionForceOther">ناوی هێزی هاوپەیمانان بنووسە <span class="required">*</span></label>
+            <input type="text" id="coalitionForceOther" aria-invalid="false" placeholder="ناوی هێز بنووسە...">
+            <span class="field-error" data-for="coalitionForceOther" role="alert"></span>
           </div>
           <div class="btn-row">
             <button type="button" class="btn btn-secondary btn-back" data-back="2">گەڕانەوە</button>
@@ -154,6 +189,7 @@
         <p class="copy-toast" id="copyToast" hidden>نامەکە کۆپی کرا</p>
       </div>
     </aside>
+    </div>
 
     <footer class="footer">
       <p>زانیارییەکان تەنیا لەم ئامێرەدا کاتییە هەڵدەگیرێن — هیچ داتابەیسێک نییە</p>
@@ -171,13 +207,13 @@
         </div>
       </div>
 
-      <div class="form-group">
+      <div class="form-group worker-person-required">
         <label>ناوی چوارى <span class="required">*</span></label>
         <input type="text" class="worker-name" required>
         <span class="field-error" data-field="name"></span>
       </div>
 
-      <div class="form-group">
+      <div class="form-group worker-person-required">
         <label>نەتەوە <span class="required">*</span></label>
         <select class="worker-nationality" required>
           <option value="">— هەڵبژێرە —</option>
@@ -201,6 +237,32 @@
           <label class="pill"><input type="radio" class="worker-is-driver" value="no" checked><span>نەخێر</span></label>
           <label class="pill"><input type="radio" class="worker-is-driver" value="yes"><span>بەڵێ</span></label>
         </div>
+      </div>
+
+      <div class="form-group worker-person-required">
+        <label>ئایا باجی هاتنەژوورەوەی هەیە؟ <span class="required">*</span></label>
+        <div class="pill-group worker-entry-tax-group">
+          <label class="pill"><input type="radio" class="worker-entry-tax" value="no" checked><span>نەخێر</span></label>
+          <label class="pill"><input type="radio" class="worker-entry-tax" value="yes"><span>بەڵێ</span></label>
+        </div>
+        <span class="field-error" data-field="entryTax"></span>
+      </div>
+
+      <div class="form-group worker-entry-tax-type-wrap worker-person-required" hidden>
+        <label>جۆری باجی هاتنەژوورەوە <span class="required">*</span></label>
+        <div class="pill-group worker-entry-tax-type-group">
+          <label class="pill"><input type="radio" class="worker-entry-tax-type" value="باجی کاتی"><span>باجی کاتی</span></label>
+          <label class="pill"><input type="radio" class="worker-entry-tax-type" value="باجی ساڵی"><span>باجی ساڵی</span></label>
+        </div>
+        <span class="field-error" data-field="entryTaxType"></span>
+      </div>
+
+      <div class="form-group worker-skip-person-wrap special-option-panel" hidden>
+        <label class="check-item check-item-wide">
+          <input type="checkbox" class="worker-skip-person">
+          <span>زانیاری کرێکار پێویست نییە؛ ئەم ئۆتۆمبێلە لە دەرەوەی فرۆکەخانە لە لایەن کۆمپانیاوە وەرگیراوەتەوە لە هێزی هاوپەیمانان</span>
+        </label>
+        <p class="mini-note">ئەگەر ئەمە دیاری بکرێت، تەنیا زانیاری ئۆتۆمبێل پێویست دەبێت و ئەم دەقە لە کۆتایی نامەکە زیاد دەکرێت.</p>
       </div>
 
       <div class="driver-fields" hidden>
@@ -320,6 +382,58 @@
         </div>
       </div>
 
+      <div class="form-group worker-vehicle-deal-wrap" hidden>
+        <label>ئەم ئۆتۆمبێلە بە کرێ یان بە فرۆشتن دەدرێت بە هاوپەیمانان؟ <span class="required">*</span></label>
+        <div class="pill-group worker-vehicle-deal-group">
+          <label class="pill"><input type="radio" class="worker-vehicle-deal-type" value="rent"><span>کرێ</span></label>
+          <label class="pill"><input type="radio" class="worker-vehicle-deal-type" value="sale"><span>فرۆشتن</span></label>
+        </div>
+        <span class="field-error" data-field="vehicleDealType"></span>
+      </div>
+
+
+
+      <div class="form-group worker-service-return-wrap" hidden>
+        <div class="service-return-panel">
+          <p class="driver-section-title">زانیاری هێنانەوە ژوورەوە لە سێرفس</p>
+          <p class="hint service-return-hint">ئەم بەشە بە خۆکار لە زانیاری بردنە دەرەوە کۆپی دەبێت. دەتوانیت ڕۆژی هێنانەوە دیاری بکەیت و ئەگەر پێویست بوو زانیاری کرێکارەکە بە جیا دەستکاری بکەیت.</p>
+          <div class="form-group">
+            <label>ڕۆژی هێنانەوەی ئۆتۆمبێل لە سێرفس <span class="required">*</span></label>
+            <input type="date" class="worker-service-return-date" required>
+            <span class="field-error" data-field="serviceReturnDate"></span>
+          </div>
+          <pre class="service-return-auto-summary"></pre>
+          <label class="check-item service-custom-check">
+            <input type="checkbox" class="worker-service-custom-return">
+            <span>دەستکاری زانیاری کرێکاری هێنانەوە ژوورەوە بکە</span>
+          </label>
+          <div class="worker-service-return-edit-wrap" hidden>
+            <div class="form-group">
+              <label>ناوی چوارى بۆ هێنانەوە <span class="required">*</span></label>
+              <input type="text" class="worker-service-return-name" placeholder="ئەگەر جیاوازە بنووسە...">
+              <span class="field-error" data-field="serviceReturnName"></span>
+            </div>
+            <div class="form-group">
+              <label>نەتەوە بۆ هێنانەوە <span class="required">*</span></label>
+              <select class="worker-service-return-nationality">
+                <option value="">— هەڵبژێرە —</option>
+                <option value="عێراقی">عێراقی</option>
+                <option value="کورد">کورد</option>
+                <option value="عەرەب">عەرەب</option>
+                <option value="تورکمانی">تورکمانی</option>
+                <option value="ئێرانی">ئێرانی</option>
+                <option value="سوری">سوری</option>
+                <option value="هی تر">هی تر</option>
+              </select>
+              <span class="field-error" data-field="serviceReturnNationality"></span>
+            </div>
+            <div class="form-group worker-service-return-nationality-other-wrap" hidden>
+              <input type="text" class="worker-service-return-nationality-other" placeholder="نەتەوە بنووسە...">
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="form-group worker-goods-group">
         <label class="worker-goods-label">کەل و پەل <span class="required goods-required-mark">*</span></label>
         <div class="checkbox-grid worker-goods-checkboxes"></div>
@@ -329,27 +443,18 @@
         <span class="field-error" data-field="goods"></span>
       </div>
 
-      <div class="form-group">
+      <div class="form-group worker-person-required mobile-type-section">
         <label>جۆری مۆبایل <span class="required">*</span></label>
         <div class="pill-group worker-mobile-group">
           <label class="pill"><input type="radio" class="worker-mobile-type" value="بێ مۆبایل"><span>بێ مۆبایل</span></label>
           <label class="pill"><input type="radio" class="worker-mobile-type" value="سمارت"><span>سمارت</span></label>
+          <label class="pill"><input type="radio" class="worker-mobile-type" value="سمارت بێ کامیرا و بێ GPS"><span>سمارت بێ کامیرا و بێ GPS</span></label>
           <label class="pill"><input type="radio" class="worker-mobile-type" value="عادی"><span>عادی</span></label>
         </div>
         <span class="field-error" data-field="mobileType"></span>
       </div>
-
-      <div class="form-group worker-import-group">
-        <label class="worker-import-label">جۆری کەل و پەل بۆ هێنانەژوورەوە <span class="required">*</span></label>
-        <div class="checkbox-grid worker-import-checkboxes"></div>
-        <div class="form-group worker-import-other-wrap" hidden>
-          <input type="text" class="worker-import-other" placeholder="جۆری تر بنووسە...">
-        </div>
-        <span class="field-error" data-field="importGoods"></span>
-      </div>
     </div>
   </template>
-
   <script src="app.js"></script>
 </body>
 </html>
