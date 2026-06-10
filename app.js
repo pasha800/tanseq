@@ -1485,6 +1485,31 @@
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
 
+  function addDaysISO(baseISO, days) {
+    const base = baseISO ? new Date(baseISO + "T00:00:00") : new Date();
+    if (Number.isNaN(base.getTime())) return todayISO();
+    base.setDate(base.getDate() + Number(days || 0));
+    return base.getFullYear() + "-" + String(base.getMonth() + 1).padStart(2, "0") + "-" + String(base.getDate()).padStart(2, "0");
+  }
+
+  function daysBetweenISO(a, b) {
+    if (!a || !b) return 0;
+    const da = new Date(a + "T00:00:00");
+    const db = new Date(b + "T00:00:00");
+    if (Number.isNaN(da.getTime()) || Number.isNaN(db.getTime())) return 0;
+    return Math.round((db - da) / 86400000);
+  }
+
+  function isDateAfter(a, b) {
+    if (!a || !b) return false;
+    return new Date(a + "T00:00:00") > new Date(b + "T00:00:00");
+  }
+
+  function isDateBefore(a, b) {
+    if (!a || !b) return false;
+    return new Date(a + "T00:00:00") < new Date(b + "T00:00:00");
+  }
+
   function toKurdishDigits(value) {
     return String(value).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[d]);
   }
@@ -1733,6 +1758,9 @@
   const errorSummary = $("#errorSummary");
   const errorList = $("#errorList");
   const copyToast = $("#copyToast");
+  const previewStatus = $("#previewStatus");
+  const draftStatus = $("#draftStatus");
+  const coordinationDateWarning = $("#coordinationDateWarning");
 
   // --- Session ---
   function isLoggedIn() {
@@ -1961,7 +1989,9 @@
     if (!$("#companyName").value.trim()) errors.push("ناوی کۆمپانیا");
     if (!$("#contractNumber").value.trim()) errors.push("ژمارەی نووسراوی گرێبەست");
     if (!$("#contractDate").value) errors.push("ڕێکەوتی نووسراوی گرێبەست");
+    if ($("#contractDate").value && isDateAfter($("#contractDate").value, todayISO())) errors.push("ڕێکەوتی نووسراوی گرێبەست نابێت داهاتوو بێت");
     if (!$("#coordinationDate").value) errors.push("ڕێکەوتی هەماهەنگی");
+    if ($("#coordinationDate").value && isDateBefore($("#coordinationDate").value, todayISO())) errors.push("ڕێکەوتی هەماهەنگی نابێت پێش ئەمڕۆ بێت");
     if (!$("#coalitionForce").value) errors.push("هێزی هاوپەیمانان");
     if ($("#coalitionForce").value === "هی تر" && !$("#coalitionForceOther").value.trim()) errors.push("ناوی هێزی هاوپەیمانانی تر");
 
@@ -2080,14 +2110,16 @@
     if (!$("#companyName").value.trim()) errors.push("ناوی کۆمپانیا");
     if (!$("#contractNumber").value.trim()) errors.push("ژمارەی نووسراوی گرێبەست");
     if (!$("#contractDate").value) errors.push("ڕێکەوتی نووسراوی گرێبەست");
+    if ($("#contractDate").value && isDateAfter($("#contractDate").value, todayISO())) errors.push("ڕێکەوتی نووسراوی گرێبەست نابێت داهاتوو بێت");
     if (!$("#coordinationDate").value) errors.push("ڕێکەوتی هەماهەنگی");
+    if ($("#coordinationDate").value && isDateBefore($("#coordinationDate").value, todayISO())) errors.push("ڕێکەوتی هەماهەنگی نابێت پێش ئەمڕۆ بێت");
     if (!$("#coalitionForce").value) errors.push("هێزی هاوپەیمانان");
     if ($("#coalitionForce").value === "هی تر" && !$("#coalitionForceOther").value.trim()) errors.push("ناوی هێزی هاوپەیمانانی تر");
     if (errors.length && markFields) {
       if (!$("#companyName").value.trim()) $("#companyName").classList.add("invalid");
       if (!$("#contractNumber").value.trim()) $("#contractNumber").classList.add("invalid");
-      if (!$("#contractDate").value) $("#contractDate").classList.add("invalid");
-      if (!$("#coordinationDate").value) $("#coordinationDate").classList.add("invalid");
+      if (!$("#contractDate").value || isDateAfter($("#contractDate").value, todayISO())) $("#contractDate").classList.add("invalid");
+      if (!$("#coordinationDate").value || isDateBefore($("#coordinationDate").value, todayISO())) $("#coordinationDate").classList.add("invalid");
       if (!$("#coalitionForce").value) $("#coalitionForce").classList.add("invalid");
       if ($("#coalitionForce").value === "هی تر" && !$("#coalitionForceOther").value.trim()) $("#coalitionForceOther").classList.add("invalid");
       showErrorSummary(errors);
@@ -2115,8 +2147,8 @@
         showErrorSummary(errors);
         if (!$("#companyName").value.trim()) $("#companyName").classList.add("invalid");
         if (!$("#contractNumber").value.trim()) $("#contractNumber").classList.add("invalid");
-        if (!$("#contractDate").value) $("#contractDate").classList.add("invalid");
-        if (!$("#coordinationDate").value) $("#coordinationDate").classList.add("invalid");
+        if (!$("#contractDate").value || isDateAfter($("#contractDate").value, todayISO())) $("#contractDate").classList.add("invalid");
+        if (!$("#coordinationDate").value || isDateBefore($("#coordinationDate").value, todayISO())) $("#coordinationDate").classList.add("invalid");
         if (!$("#coalitionForce").value) $("#coalitionForce").classList.add("invalid");
         if ($("#coalitionForce").value === "هی تر" && !$("#coalitionForceOther").value.trim()) $("#coalitionForceOther").classList.add("invalid");
         validateWorkers(true, false);
@@ -2169,7 +2201,7 @@
     msg += "زانیارییەکانی کرێکاران:\n";
 
     workers.forEach((w) => {
-      msg += (isVehicleContractExit ? "ئۆتۆمبێل " : "کرێکار ") + w.index + ":\n";
+      msg += getWorkerItemTitle(w.index) + ":\n";
       if (isVehicleContractExit && w.skipWorkerInfo) {
         msg += "زانیاری کرێکار: پێویست نییە - ئۆتۆمبێل لە دەرەوەی فرۆکەخانە وەرگیراوەتەوە\n";
       } else {
@@ -2207,7 +2239,7 @@
       const vehicleStatements = workers
         .filter((w) => w.vehicleDealType)
         .map((w) => {
-          const prefix = workers.length > 1 ? "کرێکار " + w.index + ": " : "";
+          const prefix = workers.length > 1 ? getWorkerItemTitle(w.index) + ": " : "";
           if (w.vehicleDealType === "rent") return prefix + "ئەم ئۆتۆمبێلە بەگرێبەستی کرێ دەدرێت بە هاوپەیمانان و ناگەڕێتەوە دەرەوە.";
           if (w.vehicleDealType === "sale") return prefix + "ئەم ئۆتۆمبێلە فرۆشراوە بە هاوپەیمانان و ناگەڕێتەوە دەرەوە.";
           return "";
@@ -2219,7 +2251,7 @@
     if (isVehicleService) {
       msg += "زانیاری هێنانەوە ژوورەوە لە سێرفس:\n";
       workers.forEach((w) => {
-        msg += "کرێکار " + w.index + ":\n";
+        msg += getWorkerItemTitle(w.index) + ":\n";
         msg += "ڕۆژی هێنانەوە: " + (w.serviceReturnDate || "") + "\n";
         msg += "ناوی چوارى: " + getServiceReturnWorkerName(w) + "\n";
         msg += "نەتەوە: " + getServiceReturnWorkerNationality(w) + "\n";
@@ -2241,9 +2273,35 @@
     return msg.trim();
   }
 
+  function getWorkerItemLabel() {
+    const type = currentCoordinationType();
+    if (type === "vehicle_service") return "ئۆتۆمبێلی سێرفس ";
+    if (type === "vehicle_entry" || type === "vehicle_contract_exit") return "ئۆتۆمبێل ";
+    return "کرێکار ";
+  }
+
+  function getWorkerItemTitle(index) {
+    return getWorkerItemLabel() + index;
+  }
+
+  function updatePreviewStatus() {
+    if (!previewStatus || currentStep < 4) return;
+    const errors = collectAllErrors();
+    if (!errors.length) {
+      previewStatus.textContent = "✓ نامەکە ئامادەی ناردنە";
+      previewStatus.classList.remove("status-warn");
+      previewStatus.classList.add("status-ok");
+    } else {
+      previewStatus.textContent = "⚠ هێشتا " + toKurdishDigits(errors.length) + " خانە/زانیاری پێویستە تەواو بکرێت";
+      previewStatus.classList.remove("status-ok");
+      previewStatus.classList.add("status-warn");
+    }
+  }
+
   function updatePreview() {
     if (currentStep < 4) return;
     messagePreview.textContent = buildMessage() || "زانیارییەکان پڕ بکەرەوە بۆ بینینی نامەکە...";
+    updatePreviewStatus();
   }
 
   // --- Worker card ---
@@ -2283,6 +2341,7 @@
         if (isVehicleService) {
           const returnDate = card.querySelector(".worker-service-return-date");
           if (returnDate && !returnDate.value) returnDate.value = $("#coordinationDate")?.value || todayISO();
+          updateServiceReturnDateLimits();
           updateServiceReturnSummary(card);
         } else {
           card.querySelector(".worker-service-custom-return") && (card.querySelector(".worker-service-custom-return").checked = false);
@@ -2404,6 +2463,83 @@
 
   function updateAllServiceReturnSummaries() {
     $$(".worker-card").forEach(updateServiceReturnSummary);
+  }
+
+  function updateServiceReturnDateLimits() {
+    const minDate = $("#coordinationDate")?.value || todayISO();
+    $$(".worker-service-return-date").forEach((input) => {
+      input.min = minDate;
+      if (input.value && input.value < minDate) input.value = minDate;
+      if (!input.value && isVehicleServiceType()) input.value = minDate;
+    });
+  }
+
+  function updateCoordinationDateWarning() {
+    if (!coordinationDateWarning) return;
+    const value = $("#coordinationDate")?.value || "";
+    const diff = daysBetweenISO(todayISO(), value);
+    if (value && diff > 30) {
+      coordinationDateWarning.hidden = false;
+      coordinationDateWarning.textContent = "ئاگاداری: ئەم ڕێکەوتە زیاتر لە " + toKurdishDigits(30) + " ڕۆژ دوورە، دڵنیایت؟";
+    } else {
+      coordinationDateWarning.hidden = true;
+      coordinationDateWarning.textContent = "";
+    }
+  }
+
+  function setDateLimits() {
+    const today = todayISO();
+    const contractDate = $("#contractDate");
+    const coordinationDate = $("#coordinationDate");
+    if (contractDate) contractDate.max = today;
+    if (coordinationDate) {
+      coordinationDate.min = today;
+      if (!coordinationDate.value || coordinationDate.value < today) coordinationDate.value = today;
+    }
+    updateServiceReturnDateLimits();
+    updateCoordinationDateWarning();
+  }
+
+  function normalizeSmartValue(value) {
+    return String(value || "").replace(/[\u200e\u200f]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  }
+
+  function updateDuplicateWarnings() {
+    const cards = $$(".worker-card");
+    const workers = collectWorkersFromDOM();
+    const nameCounts = new Map();
+    const plateCounts = new Map();
+    workers.forEach((w) => {
+      const nameKey = normalizeSmartValue(w.name);
+      const plateKey = normalizeSmartValue(w.plateNumber);
+      if (nameKey) nameCounts.set(nameKey, (nameCounts.get(nameKey) || 0) + 1);
+      if (plateKey) plateCounts.set(plateKey, (plateCounts.get(plateKey) || 0) + 1);
+    });
+    workers.forEach((w, i) => {
+      const card = cards[i];
+      if (!card) return;
+      let box = card.querySelector(".worker-smart-warnings");
+      if (!box) {
+        box = document.createElement("div");
+        box.className = "worker-smart-warnings";
+        const header = card.querySelector(".worker-header");
+        if (header) header.insertAdjacentElement("afterend", box);
+        else card.prepend(box);
+      }
+      const messages = [];
+      if (w.name && nameCounts.get(normalizeSmartValue(w.name)) > 1) messages.push("ئاگاداری: ئەم ناوە پێشتر لە لیستەکەدا هەیە.");
+      if (w.plateNumber && plateCounts.get(normalizeSmartValue(w.plateNumber)) > 1) messages.push("ئاگاداری: ئەم ژمارەی ئۆتۆمبێلە پێشتر زیاد کراوە.");
+      box.innerHTML = messages.map((m) => '<span class="duplicate-warning">' + m + '</span>').join("");
+      box.hidden = !messages.length;
+    });
+  }
+
+  function setDraftStatus(text, kind) {
+    if (!draftStatus) return;
+    draftStatus.hidden = !text;
+    draftStatus.textContent = text || "";
+    draftStatus.classList.remove("status-ok", "status-saving", "status-error");
+    if (kind) draftStatus.classList.add("status-" + kind);
   }
 
   function clearDriverFields(card) {
@@ -2635,7 +2771,7 @@
     const serviceCustom = card.querySelector(".worker-service-custom-return");
     if (serviceCustom) serviceCustom.addEventListener("change", () => { toggleServiceCustomReturn(card); onFormChange(); });
     const serviceReturnDate = card.querySelector(".worker-service-return-date");
-    if (serviceReturnDate) serviceReturnDate.addEventListener("change", onFormChange);
+    if (serviceReturnDate) serviceReturnDate.addEventListener("change", () => { updateServiceReturnDateLimits(); onFormChange(); });
     const serviceReturnNationality = card.querySelector(".worker-service-return-nationality");
     if (serviceReturnNationality) serviceReturnNationality.addEventListener("change", () => { toggleServiceReturnNationalityOther(card); onFormChange(); });
     ["worker-service-return-name", "worker-service-return-nationality-other"].forEach((cls) => {
@@ -2686,7 +2822,7 @@
     const cards = $$(".worker-card");
     cards.forEach((card, i) => {
       const title = card.querySelector(".worker-title");
-      if (title && title.firstChild) title.firstChild.nodeValue = isVehicleContractExitType() ? "ئۆتۆمبێل " : "کرێکار ";
+      if (title && title.firstChild) title.firstChild.nodeValue = getWorkerItemLabel();
       card.querySelector(".worker-num").textContent = i + 1;
       card.querySelector(".btn-remove-worker").hidden = cards.length <= 1;
       card.querySelector(".btn-copy-prev").hidden = i === 0;
@@ -2748,16 +2884,22 @@
   function scheduleSave() {
     if (restoring || !isLoggedIn()) return;
     clearTimeout(saveTimer);
+    setDraftStatus("پاشەکەوتی خۆکار دەکرێت...", "saving");
     saveTimer = setTimeout(() => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeForm()));
-      } catch (_) { /* quota */ }
+        setDraftStatus("✓ زانیارییەکان خۆکار هەڵگیران", "ok");
+      } catch (_) {
+        setDraftStatus("⚠ نەتوانرا زانیارییەکان هەڵبگیرێن", "error");
+      }
     }, 400);
   }
 
   function onFormChange() {
     hideErrorSummary();
+    setDateLimits();
     updateAllServiceReturnSummaries();
+    updateDuplicateWarnings();
     updatePreview();
     scheduleSave();
   }
@@ -2860,6 +3002,8 @@
     });
 
     updateWorkerFieldRequirements();
+    setDateLimits();
+    updateDuplicateWarnings();
     updateCompanyBanner();
     restoring = false;
 
@@ -2870,6 +3014,7 @@
 
   function clearSavedData() {
     localStorage.removeItem(STORAGE_KEY);
+    setDraftStatus("زانیارییە هەڵگیراوەکان سڕانەوە", "ok");
   }
 
   function syncTypeChoiceUI(value) {
@@ -2995,12 +3140,33 @@
     }
   });
 
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".quick-date-btn");
+    if (!btn) return;
+    const offset = parseInt(btn.dataset.offset || "0", 10);
+    if (btn.dataset.target === "coordinationDate") {
+      $("#coordinationDate").value = addDaysISO(todayISO(), offset);
+      setDateLimits();
+      onFormChange();
+    }
+    if (btn.dataset.target === "serviceReturnDate") {
+      const card = btn.closest(".worker-card");
+      const input = card?.querySelector(".worker-service-return-date");
+      if (input) {
+        const baseDate = $("#coordinationDate")?.value || todayISO();
+        input.value = addDaysISO(baseDate, offset);
+        updateServiceReturnDateLimits();
+        onFormChange();
+      }
+    }
+  });
+
   $("#notes").addEventListener("input", onFormChange);
 
   ["companyName", "contractNumber", "contractDate", "coordinationDate", "coalitionForce", "coalitionForceOther"].forEach((id) => {
     const el = $("#" + id);
-    el.addEventListener("input", () => { toggleCoalitionForceOther(); onFormChange(); });
-    el.addEventListener("change", () => { toggleCoalitionForceOther(); onFormChange(); });
+    el.addEventListener("input", () => { toggleCoalitionForceOther(); setDateLimits(); onFormChange(); });
+    el.addEventListener("change", () => { toggleCoalitionForceOther(); setDateLimits(); onFormChange(); });
   });
 
   function resetAll(clearStorage) {
@@ -3015,6 +3181,11 @@
     toggleCoalitionForceOther();
     $("#notes").value = "";
     messagePreview.textContent = "";
+    if (previewStatus) {
+      previewStatus.textContent = "⚠ هێشتا زانیارییەکان تەواو نەکراون";
+      previewStatus.classList.remove("status-ok");
+      previewStatus.classList.add("status-warn");
+    }
     workersContainer.innerHTML = "";
     workerCount = 0;
     companyBanner.hidden = true;
@@ -3027,7 +3198,7 @@
   // --- Init ---
   const coordDateEl = $("#coordinationDate");
   coordDateEl.value = todayISO();
-  coordDateEl.min = todayISO();
+  setDateLimits();
   toggleCoalitionForceOther();
   companyBanner.hidden = true;
   editCompanyBtn.hidden = true;
