@@ -28,6 +28,7 @@
       <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="25" aria-labelledby="progressText">
         <div class="progress-fill" id="progressFill"></div>
       </div>
+      <p class="step-status status-warn" id="stepStatus" hidden role="status" aria-live="polite"></p>
     </nav>
 
     <!-- Company summary banner (locked after step 3) -->
@@ -212,7 +213,8 @@
         <!-- Step 4: Workers -->
         <section class="card step-panel" id="step4" data-step="4" hidden aria-labelledby="step4-title">
           <h2 id="step4-title">زانیارییەکانی کرێکاران</h2>
-          <p class="hint">زانیارییەکانی هەر کەسێک پڕ بکەرەوە. دەتوانیت زیاتر لە یەک کەس زیاد بکەیت.</p>
+          <p class="hint" id="step4Hint">زانیارییەکانی هەر کەسێک پڕ بکەرەوە. دەتوانیت زیاتر لە یەک کەس زیاد بکەیت.</p>
+          <div class="record-count-summary" id="workerCountSummary" role="status" aria-live="polite">ژمارەی تۆمارکراوەکان: ٠</div>
           <div id="workersContainer" role="list" aria-label="لیستی کرێکاران"></div>
           <button type="button" class="btn btn-outline btn-add-worker btn-lg" id="addWorkerBtn" aria-label="زیادکردنی کرێکارێکی تر">
             + زیادکردنی کرێکارێکی تر
@@ -254,6 +256,9 @@
           <button type="button" class="btn btn-primary btn-block" id="copyMessageBtn">
             کۆپی کردنی نامە
           </button>
+          <button type="button" class="btn btn-outline btn-block" id="printPreviewBtn">
+            پێشنمایشی نامە بە شێوەی چاپ
+          </button>
           <div class="btn-row">
             <button type="button" class="btn btn-secondary" id="clearFormBtn" title="پاککردنەوەی هەموو خانەکان">
               پاک کردنەوەی فۆڕم
@@ -269,6 +274,20 @@
         </div>
       </aside>
     </div>
+
+    <section class="print-preview-panel" id="printPreviewPanel" hidden aria-label="پێشنمایشی چاپی نامە">
+      <div class="print-preview-header">
+        <div>
+          <h2>پێشنمایشی چاپی نامە</h2>
+          <p>ئەم پێشنمایشە تەنیا بۆ پشکنین و چاپکردنی نامەکەیە.</p>
+        </div>
+        <div class="print-preview-actions">
+          <button type="button" class="btn btn-secondary" id="closePrintPreviewBtn">داخستن</button>
+          <button type="button" class="btn btn-primary" id="printNowBtn">چاپکردن</button>
+        </div>
+      </div>
+      <pre class="print-preview-text" id="printPreviewText" dir="rtl"></pre>
+    </section>
 
     <footer class="footer" role="contentinfo">
       <p>زانیارییەکان تەنیا لەم ئامێرەدا کاتییە هەڵدەگیرێن — هیچ داتابەیسێک نییە</p>
@@ -294,7 +313,7 @@
 
       <!-- Person required fields -->
       <div class="form-group worker-person-required">
-        <label>ناوی چوارى <span class="required" aria-hidden="true">*</span></label>
+        <label class="worker-name-label">ناوی چوارى <span class="required" aria-hidden="true">*</span></label>
         <input type="text" class="worker-name" required aria-required="true" autocomplete="off" spellcheck="false">
         <span class="field-error" data-field="name" role="alert"></span>
       </div>
